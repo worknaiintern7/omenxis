@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+<style>
+*{box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0f172a;color:#f8fafc;margin:0;padding:12px;text-align:center}
+#board{width:100%;max-width:480px;margin:0 auto;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.7);border:4px solid #1e293b;position:relative}
+#status{font-size:1rem;font-weight:600;background:rgba(0,0,0,0.3);padding:10px 16px;border-radius:12px;margin:10px auto;max-width:480px}
+.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px 0;max-width:480px;margin-left:auto;margin-right:auto}
+button{padding:10px 18px;font-size:0.85rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:transform 0.1s}
+button:active{transform:scale(0.95)}
+#restartBtn{background:#3b82f6;color:#fff}
+#hintBtn{background:#f59e0b;color:#fff;display:none}
+#undoBtn{background:#6366f1;color:#fff}
+#nextMoveBtn{background:#22c55e;color:#fff;display:none}
+#levelBar{display:flex;gap:6px;justify-content:center;margin:8px auto;max-width:480px;flex-wrap:wrap}
+.lvl-btn{padding:6px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:0.8rem;font-weight:600;cursor:pointer}
+#trialBadge{display:none;background:#f59e0b22;border:1px solid #f59e0b55;color:#f59e0b;padding:4px 12px;border-radius:8px;font-size:0.8rem;font-weight:600;margin:4px auto;max-width:480px}
+#hintBox{display:none;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:10px 16px;margin:8px auto;max-width:480px;font-size:0.9rem;color:#86efac}
+
+/* Move dot overlay */
+.move-dot{position:absolute;border-radius:50%;pointer-events:none;z-index:5;transform:translate(-50%,-50%)}
+.dot-normal{background:rgba(34,197,94,0.75);width:28%;height:28%}
+.dot-capture{background:rgba(239,68,68,0.0);border:4px solid rgba(239,68,68,0.8);width:90%;height:90%;border-radius:50%}
+.dot-danger{background:rgba(239,68,68,0.55);width:28%;height:28%}
+.dot-predict{background:rgba(251,191,36,0.6);width:22%;height:22%}
+
+/* Square highlights */
+.sq-selected{box-shadow:inset 0 0 0 4px rgba(234,179,8,0.95)!important}
+.sq-hint-from{box-shadow:inset 0 0 0 4px rgba(34,197,94,0.9)!important}
+.sq-hint-to{box-shadow:inset 0 0 0 4px rgba(96,165,250,0.9)!important}
+.sq-danger{box-shadow:inset 0 0 0 4px rgba(239,68,68,0.8)!important}
+.sq-predict{box-shadow:inset 0 0 0 3px rgba(251,191,36,0.7)!important}
+</style>
+</head>
+<body>
+
+<div id="trialBadge">🎯 Trial Mode — Game won't be saved</div>
+<div id="levelBar"></div>
+<div id="board"></div>
+<div id="status">Your Turn</div>
+<div id="hintBox"></div>
+
+<div class="btn-row">
+  <button id="restartBtn" onclick="resetGame()">↺ Restart</button>
+  <button id="undoBtn" onclick="undoMove()">↩ Undo</button>
+  <button id="hintBtn" onclick="showHint()">💡 Hint</button>
+  <button id="nextMoveBtn" onclick="showNextMove()">🧭 Best Move</button>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+<script>
+// ── Config ──────────────────────────────────────────────
+let AI_DEPTH=2, HINTS_ON=false, TRIAL_MODE=false, currentLevel=1;
+
+const LEVELS=[
+  {id:1,label:'L1 Beginner',depth:1,color:'#22c55e'},
+  {id:2,label:'L2 Easy',    depth:2,color:'#84cc16'},
+  {id:3,label:'L3 Medium',  depth:3,color:'#f59e0b'},
+  {id:4,label:'L4 Hard',    depth:4,color:'#f97316'},
+  {id:5,label:'L5 Expert',  depth:5,color:'#ef4444'},
+];
+
+const levelBar=document.getElementById('levelBar');
+LEVELS.forEach(lvl=>{
+  const btn=document.createElement('button');
+  btn.className='lvl-btn'+(lvl.id===1?' active':'');
+  btn.textContent=lvl.label; btn.id='lvlBtn'+lvl.id;
+  btn.onclick=()=>setLevel(lvl.id);
+  levelBar.appendChild(btn);
+});
+
+function setLevel(id){
+  currentLevel=id; AI_DEPTH=LEVELS[id-1].depth;
+  LEVELS.forEach(l=>{
+    const b=document.getElementById('lvlBtn'+l.id);
+    if(l.id===id){b.className='lvl-btn active';b.style.background=l.color;b.style.borderColor=l.color;b.style.color='#fff';}
+    else{b.className='lvl-btn';b.style.background='';b.style.borderColor='';b.style.color='';}
+  });
+  window.ReactNativeWebView?.postMessage(JSON.stringify({type:'levelChanged',level:id}));
+}
+
+function initGame(depth,hints,trial){
+  AI_DEPTH=depth||2; HINTS_ON=hints||false; TRIAL_MODE=trial||false;
+  const idx=LEVELS.findIndex(l=>l.depth===AI_DEPTH);
+  currentLevel=idx>=0?idx+1:1;
+  if(HINTS_ON){document.getElementById('hintBtn').style.display='inline-block';document.getElementById('nextMoveBtn').style.display='inline-block';}
+  if(TRIAL_MODE)document.getElementById('trialBadge').style.display='block';
+  setLevel(currentLevel);
+}
+
+// ── Engine ───────────────────────────────────────────────
+const game=new Chess();
+const statusDiv=document.getElementById('status');
+const hintBox=document.getElementById('hintBox');
+const pieceValues={p:100,n:320,b:330,r:500,q:900,k:20000};
+
+const pawnTable=[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0];
+const knightTable=[-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50];
+
+function getPosVal(p,r,c){
+  if(!p)return 0;
+  const idx=p.color==='w'?(7-r)*8+c:r*8+c;
+  if(p.type==='p')return pawnTable[idx]||0;
+  if(p.type==='n')return knightTable[idx]||0;
+  return 0;
+}
+function evalBoard(board){
+  let t=0;
+  for(let i=0;i<8;i++)for(let j=0;j<8;j++){
+    const p=board[i][j]; if(!p)continue;
+    const v=(pieceValues[p.type]||0)+getPosVal(p,i,j);
+    t+=p.color==='w'?v:-v;
+  }
+  return t;
+}
+function minimax(d,g,a,b,isMax){
+  if(d===0||g.game_over())return evalBoard(g.board());
+  const moves=g.moves();
+  moves.sort((x,y)=>(y.includes('x')?1:0)-(x.includes('x')?1:0));
+  if(isMax){
+    let best=-Infinity;
+    for(let i=0;i<moves.length;i++){g.move(moves[i]);best=Math.max(best,minimax(d-1,g,a,b,false));g.undo();a=Math.max(a,best);if(b<=a)break;}
+    return best;
+  }else{
+    let best=Infinity;
+    for(let i=0;i<moves.length;i++){g.move(moves[i]);best=Math.min(best,minimax(d-1,g,a,b,true));g.undo();b=Math.min(b,best);if(b<=a)break;}
+    return best;
+  }
+}
+function getBestMove(forColor){
+  const moves=game.moves({verbose:true}); if(!moves.length)return null;
+  let bestMove=null,bestVal=forColor==='b'?Infinity:-Infinity;
+  for(let i=0;i<moves.length;i++){
+    game.move(moves[i]);
+    const val=minimax(AI_DEPTH-1,game,-Infinity,Infinity,forColor==='b');
+    game.undo();
+    if(forColor==='b'?val<bestVal:val>bestVal){bestVal=val;bestMove=moves[i];}
+  }
+  return bestMove;
+}
+
+// ── Dot Overlay System ───────────────────────────────────
+function getSquareEl(sq){return document.querySelector(`[data-square="${sq}"]`);}
+
+function getSquareCenter(sq){
+  const el=getSquareEl(sq); if(!el)return null;
+  const br=el.getBoundingClientRect();
+  const boardRect=document.getElementById('board').getBoundingClientRect();
+  return{x:br.left-boardRect.left+br.width/2, y:br.top-boardRect.top+br.height/2, w:br.width, h:br.height};
+}
+
+function placeDot(sq,cls){
+  const pos=getSquareCenter(sq); if(!pos)return;
+  const dot=document.createElement('div');
+  dot.className='move-dot '+cls;
+  dot.style.left=pos.x+'px'; dot.style.top=pos.y+'px';
+  dot.style.width=(cls==='dot-capture'||cls==='dot-danger'?pos.w*0.9:pos.w*0.3)+'px';
+  dot.style.height=(cls==='dot-capture'||cls==='dot-danger'?pos.h*0.9:pos.h*0.3)+'px';
+  document.getElementById('board').appendChild(dot);
+}
+
+function clearDots(){document.querySelectorAll('.move-dot').forEach(d=>d.remove());}
+function clearAllHighlights(){
+  clearDots();
+  document.querySelectorAll('.sq-selected,.sq-hint-from,.sq-hint-to,.sq-danger,.sq-predict').forEach(el=>{
+    el.classList.remove('sq-selected','sq-hint-from','sq-hint-to','sq-danger','sq-predict');
+  });
+  hintBox.style.display='none';
+}
+
+// Show possible moves for selected piece with dots
+function showMoveDots(sq){
+  clearDots();
+  const moves=game.moves({square:sq,verbose:true});
+  moves.forEach(m=>{
+    const targetPiece=game.get(m.to);
+    if(targetPiece&&targetPiece.color!=='w'){
+      // Capture square — red ring
+      placeDot(m.to,'dot-capture');
+    } else {
+      // Normal move — green dot
+      placeDot(m.to,'dot-normal');
+    }
+  });
+}
+
+// After player selects a piece, predict AI response and show red dots on threatened squares
+function showThreatPrediction(fromSq, toSq){
+  // Simulate the player's move
+  const tempGame=new Chess(game.fen());
+  const mv=tempGame.move({from:fromSq,to:toSq,promotion:'q'});
+  if(!mv)return;
+
+  // Get AI best response
+  const aiMoves=tempGame.moves({verbose:true});
+  if(!aiMoves.length)return;
+
+  let bestAI=null,bestVal=Infinity;
+  for(let i=0;i<aiMoves.length;i++){
+    tempGame.move(aiMoves[i]);
+    const val=minimax(Math.min(AI_DEPTH-1,2),tempGame,-Infinity,Infinity,true);
+    tempGame.undo();
+    if(val<bestVal){bestVal=val;bestAI=aiMoves[i];}
+  }
+
+  if(bestAI){
+    // Show predicted AI move in yellow
+    const fromEl=getSquareEl(bestAI.from);
+    const toEl=getSquareEl(bestAI.to);
+    if(fromEl)fromEl.classList.add('sq-predict');
+    if(toEl)toEl.classList.add('sq-predict');
+    placeDot(bestAI.to,'dot-predict');
+
+    // If AI move captures a white piece, highlight that square red
+    const target=game.get(bestAI.to);
+    if(target&&target.color==='w'){
+      if(toEl)toEl.classList.add('sq-danger');
+    }
+  }
+}
+
+// Highlight all white pieces currently under attack
+function highlightThreatenedPieces(){
+  const board=game.board();
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const p=board[r][c];
+      if(!p||p.color!=='w')continue;
+      const files='abcdefgh';
+      const sq=files[c]+(8-r);
+      // Check if any black piece attacks this square
+      const tempGame=new Chess(game.fen());
+      // Switch turn to black to check attacks
+      const fen=game.fen().replace(' w ',' b ');
+      const checkGame=new Chess(fen);
+      const blackMoves=checkGame.moves({verbose:true});
+      const isAttacked=blackMoves.some(m=>m.to===sq);
+      if(isAttacked){
+        const el=getSquareEl(sq);
+        if(el)el.classList.add('sq-danger');
+        placeDot(sq,'dot-danger');
+      }
+    }
+  }
+}
+
+// ── AI Move ──────────────────────────────────────────────
+function makeBestMove(){
+  if(game.game_over())return;
+  statusDiv.innerHTML='🤔 Thinking...';
+  setTimeout(()=>{
+    const moves=game.moves({verbose:true});
+    let move;
+    if(currentLevel===1&&Math.random()<0.35){
+      move=moves[Math.floor(Math.random()*moves.length)];
+    }else{
+      move=getBestMove('b')||moves[Math.floor(Math.random()*moves.length)];
+    }
+    game.move(move);
+    board.position(game.fen());
+    clearAllHighlights();
+    highlightThreatenedPieces(); // show red on threatened white pieces after AI moves
+    updateStatus();
+  },50);
+}
+
+// ── Hint ─────────────────────────────────────────────────
+function showHint(){
+  if(game.turn()!=='w'||game.game_over())return;
+  clearAllHighlights();
+  const best=getBestMove('w'); if(!best)return;
+  const fromEl=getSquareEl(best.from);
+  const toEl=getSquareEl(best.to);
+  if(fromEl)fromEl.classList.add('sq-hint-from');
+  if(toEl)toEl.classList.add('sq-hint-to');
+  hintBox.style.display='block';
+  hintBox.innerHTML=`💡 Hint: Move <b>${best.piece.toUpperCase()}</b> from <b>${best.from}</b> → <b>${best.to}</b>`;
+  setTimeout(clearAllHighlights,4000);
+}
+
+function showNextMove(){
+  if(game.turn()!=='w'||game.game_over())return;
+  clearAllHighlights();
+  const best=getBestMove('w'); if(!best)return;
+  const fromEl=getSquareEl(best.from);
+  const toEl=getSquareEl(best.to);
+  if(fromEl)fromEl.classList.add('sq-hint-from');
+  if(toEl)toEl.classList.add('sq-hint-to');
+  hintBox.style.display='block';
+  hintBox.innerHTML=`🧭 Best: <b>${best.san}</b> — ${getMoveExpl(best)}`;
+}
+
+function getMoveExpl(m){
+  if(m.flags.includes('c'))return'Capture opponent piece ♟';
+  if(m.flags.includes('k')||m.flags.includes('q'))return'Castle — protect your king 🏰';
+  if(m.flags.includes('p'))return'Pawn promotion! 👑';
+  if(m.piece==='p')return'Advance your pawn';
+  if(m.piece==='n')return'Develop your knight';
+  if(m.piece==='b')return'Develop your bishop';
+  if(m.piece==='r')return'Activate your rook';
+  if(m.piece==='q')return'Activate your queen';
+  return'Good positional move';
+}
+
+// ── Undo ─────────────────────────────────────────────────
+function undoMove(){
+  if(game.history().length<2)return;
+  game.undo(); game.undo();
+  board.position(game.fen());
+  clearAllHighlights();
+  updateStatus();
+}
+
+// ── Board Interaction ────────────────────────────────────
+let selectedSquare=null;
+
+const board=Chessboard('board',{
+  draggable:false,
+  position:'start',
+  showNotation:true,
+  pieceTheme:'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+});
+
+$('#board').on('click','.square-55d63',function(){
+  if(game.game_over()||game.turn()==='b')return;
+  const sq=$(this).attr('data-square');
+  const pc=game.get(sq);
+
+  if(!selectedSquare){
+    if(!pc||pc.color!=='w')return;
+    clearAllHighlights();
+    selectedSquare=sq;
+    $(this).addClass('sq-selected');
+    showMoveDots(sq);
+  } else {
+    const mv=game.move({from:selectedSquare,to:sq,promotion:'q'});
+    if(!mv){
+      if(pc&&pc.color==='w'){
+        clearAllHighlights();
+        selectedSquare=sq;
+        $(this).addClass('sq-selected');
+        showMoveDots(sq);
+      } else {
+        clearAllHighlights();
+        selectedSquare=null;
+      }
+    } else {
+      board.position(game.fen());
+      clearAllHighlights();
+      selectedSquare=null;
+      updateStatus();
+      if(!game.game_over()) setTimeout(makeBestMove,300);
+    }
+  }
+});
+
+// Long press / hover on piece — show threat prediction
+$('#board').on('mousedown touchstart','.square-55d63',function(e){
+  if(game.turn()!=='w'||game.game_over())return;
+  const sq=$(this).attr('data-square');
+  const pc=game.get(sq);
+  if(!pc||pc.color!=='w')return;
+  // Show prediction only when a square is already selected
+  if(selectedSquare&&selectedSquare!==sq){
+    showThreatPrediction(selectedSquare,sq);
+  }
+});
+
+// ── Status ───────────────────────────────────────────────
+function updateStatus(){
+  const turn=game.turn();
+  let s='',color='#f8fafc';
+  if(game.in_checkmate()){
+    s=turn==='w'?'😔 You lost — Checkmate!':'🏆 You Win — Checkmate!';
+    color=turn==='w'?'#ef4444':'#22c55e';
+    window.ReactNativeWebView?.postMessage(JSON.stringify({type:'gameOver',result:turn==='w'?'loss':'win',moves:game.history().length,trial:TRIAL_MODE}));
+  } else if(game.in_draw()){
+    s='🤝 Draw!'; color='#f59e0b';
+    window.ReactNativeWebView?.postMessage(JSON.stringify({type:'gameOver',result:'draw',moves:game.history().length,trial:TRIAL_MODE}));
+  } else {
+    s=turn==='w'?'♟ Your Turn':"🤖 Computer's Turn";
+    if(game.in_check()){s+=' — ⚠️ Check!';color='#fbbf24';}
+  }
+  statusDiv.innerHTML=s; statusDiv.style.color=color;
+}
+
+function resetGame(){
+  game.reset(); board.start();
+  selectedSquare=null; clearAllHighlights(); updateStatus();
+}
+
+updateStatus();
+</script>
+</body>
+</html>
