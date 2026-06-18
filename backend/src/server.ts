@@ -31,6 +31,7 @@ connectDB();
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
+app.get('/', (_, res) => res.json({ message: 'Omenxis backend is running', health: '/health' }));
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
 
 interface Player { socketId: string; username: string; userId?: string; timeLeft: number; }
