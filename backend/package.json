@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "docker:build": "docker build -t omenxis-backend .",
+    "docker:up": "docker compose up -d --build"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

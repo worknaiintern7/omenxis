@@ -3,17 +3,24 @@ import path from 'path';
 import fs from 'fs';
 
 if (!admin.apps.length) {
-  const serviceAccountPath = path.resolve(__dirname, './serviceAccountKey.json');
+  const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+    ? path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+    : path.resolve(__dirname, './serviceAccountKey.json');
+  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-  if (fs.existsSync(serviceAccountPath)) {
-    // Use service account key file if available
+  if (serviceAccountBase64) {
+    const serviceAccount = JSON.parse(Buffer.from(serviceAccountBase64, 'base64').toString('utf8'));
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+  } else if (fs.existsSync(serviceAccountPath)) {
     const serviceAccount = require(serviceAccountPath);
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: process.env.FIREBASE_PROJECT_ID,
     });
   } else {
-    // Fallback to application default credentials
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
       projectId: process.env.FIREBASE_PROJECT_ID,
