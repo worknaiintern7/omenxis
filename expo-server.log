@@ -1,0 +1,36 @@
+
+> frontend@1.0.0 start
+> expo start --host lan
+
+env: load .env
+env: export REACT_NATIVE_PACKAGER_HOSTNAME MONGO_URI EXPO_PUBLIC_FIREBASE_API_KEY EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN EXPO_PUBLIC_FIREBASE_PROJECT_ID EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID EXPO_PUBLIC_FIREBASE_APP_ID EXPO_PUBLIC_API_URL
+Starting project at C:\Users\ADMIN\Desktop\chess_game_application-main\frontend
+Starting Metro Bundler
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓░░░░░░░░░░░ 36.0% ( 7/12)
+λ node_modules\expo-router\node\render.js ░░░░░░░░░░░░░░░░  5.2% ( 38/176)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓░░░░░░░░░░░ 36.0% (29/63)
+λ node_modules\expo-router\node\render.js ▓▓▓▓░░░░░░░░░░░░ 29.7% (236/433)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓░░░░░░░░░░░ 36.0% (105/281)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 66.0% (499/614)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓░░░░░░░░░░ 40.7% (314/492)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 82.1% (686/757)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 76.0% (668/766)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 89.4% (886/937)
+λ Bundled 20500ms node_modules\expo-router\node\render.js (1059 modules)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.2% (952/956)
+Web Bundled 23198ms node_modules\expo-router\entry.js (956 modules)
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 88ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 921ms node_modules\expo-router\entry.js (1 module)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓░░░░░░░░░░░ 32.2% (132/316)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 66.7% (589/721)
+Web Bundled 9104ms node_modules\expo-router\entry.js (957 modules)
+ LOG  [web] Logs will appear in the browser console
+Android node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android node_modules\expo-router\entry.js ▓▓▓▓░░░░░░░░░░░░ 27.7% (226/484)
+Android node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓░░░░░░░░ 52.8% (561/772)
+Android node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 80.9% ( 935/1050)
+Android Bundled 13631ms node_modules\expo-router\entry.js (1232 modules)
