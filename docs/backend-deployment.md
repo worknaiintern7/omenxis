@@ -18,7 +18,7 @@ The deployment server needs:
 - Docker
 - Docker Compose plugin
 - SSH access from GitHub Actions
-- An open backend port, usually `5000`
+- An open backend port, for example `5010` on a shared VPS
 
 ## Required GitHub Secrets
 
@@ -46,7 +46,7 @@ Required backend runtime secrets:
 
 Recommended backend runtime secrets:
 
-- `PORT`: defaults to `5000`
+- `PORT`: defaults to `5000`; use another free port such as `5010` if `5000` is already busy
 - `JWT_EXPIRES_IN`: defaults to `7d`
 - `ALLOWED_ORIGIN`: frontend URL, or `*` while testing
 - `ADMIN_USERNAME`: defaults to `admin`
@@ -66,7 +66,7 @@ After deployment, check:
 
 ```bash
 docker ps
-curl http://localhost:5000/health
+curl http://localhost:5010/health
 ```
 
 The health endpoint should return:
